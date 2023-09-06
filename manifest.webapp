@@ -1,0 +1,21 @@
+{
+    "version": "0.1",
+    "name": "Routine Data Entry",
+    "description": "Routine Data Entry App",
+    "launch_path": "index.html",
+    "icons": {
+        "16": "../../../icons/dhis-web-aggregate-data-entry.png",
+        "48": "../../../icons/dhis-web-aggregate-data-entry.png",
+        "128": "../../../icons/dhis-web-aggregate-data-entry.png"
+    },
+    "developer": {
+        "name": "HISP",
+        "url": "http://dhis2.org"
+    },
+    "default_locale": "en",
+    "activities": {
+        "dhis": {
+            "href": ".."
+        }
+    }
+}

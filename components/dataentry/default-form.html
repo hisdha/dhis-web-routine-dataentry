@@ -1,0 +1,618 @@
+<div class="vertical-spacing remove-left-padding" ng-if="model.selectedDataSet && model.selectedPeriod && model.categoryOptionsReady">
+
+    <div ng-if="model.dataEntryFormLoaded">
+        <div ng-if="model.selectedDataSet.sections.length > 0">
+            <div class="col-sm-12" equal-height-nav-tabs>
+                <tabset justified="true">
+                    <tab heading="{{section.displayName}}" class="bold" ng-repeat="section in model.selectedDataSet.sections | orderBy:'sortOrder'" active="section.active">
+                        <div class="row col-sm-12 vertical-spacing">
+                            <div class="col-sm-12 pull-left ds-hdr">
+                                {{section.description}}
+
+                            </div>
+                            <table class="report-table"
+                                   ng-if="section.dataElements.length > 0 && section.active">
+                                <thead>
+                                    <tr>
+                                        <th class="col-sm-3 pull-center de-table-hdr">
+                                            {{'s_no'| translate}}
+                                        </th>
+                                        <th class="col-sm-6 pull-center de-table-hdr">
+                                            {{'activity'| translate}}
+                                        </th>
+                                        <th class="col-sm-3 pull-center de-table-hdr">
+                                            {{'number'| translate}}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody ng-repeat="dataElement in section.dataElements"
+                                       ng-init="de = model.dataElements[dataElement.id];
+                                       ocos = model.categoryCombos[de.categoryCombo.id].categoryOptionCombos">
+                                    <tr ng-if="de.displayTitle">
+                                        <td class="ind-style" ng-bind="de.displayTitle.serialNumber">
+                                        </td>
+                                        <td class="ind-style" ng-bind="de.displayTitle.displayName">
+                                        </td>
+                                        <td class="ind-style"></td>
+                                    </tr>
+                                    <tr ng-repeat="ind in section.indicators" ng-if="ind.params.indexOf(de.id) === 0 || ind.params[0].lastIndexOf(de.id, 0) === 0"><!-- last index added for indicators that are defined with option combos-->
+                                        <td class="ind-style" ng-bind="ind.serial_number">
+                                        </td>
+                                        <td class="ind-style" ng-bind="ind.displayName">
+                                        </td>
+                                        <td class="ind-style">
+                                            <div ng-if="ind.displayable">
+                                                {{getIndicatorValue(ind)}}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr class="de-total-style" ng-if="ocos.length > 1">
+                                        <td ng-bind="de.serial_number">
+                                        </td>
+                                        <td>
+                                            <div ng-bind="de.displayFormName">
+                                            </div>
+                                            <div ng-repeat="vr in de.validationRules" class="alert alert-danger trimmed-alert small-vertical-spacing italic" ng-if="model.failedValidationRules.indexOf(vr.id) !== -1">
+                                                {{vr.instruction ? vr.instruction : vr.displayName}}
+                                            </div>
+                                        </td>
+                                        <td ng-bind="dataValues[de.id].total">
+                                        </td>
+                                    </tr>
+                                    <tr class="de-style" ng-repeat="oco in ocos">
+                                        <td ng-if="section.greyedFields.indexOf(de.id+'.'+oco.id) === -1">
+                                            <!-- serial number location-->
+                                            {{(de.serial_number && ocos.length >= 1) ? (de.serial_number + ".") : ''}} {{ocos.length <=1? ' ' : $index+1 }}
+                                        </td>
+                                        <td ng-if="section.greyedFields.indexOf(de.id+'.'+oco.id) === -1">
+                                            <div class="oco-left-padding" ng-if="ocos.length > 1" ng-bind="oco.displayName">
+                                            </div>
+                                            <div ng-if="ocos.length === 1" ng-bind="de.displayFormName">
+                                            </div>
+                                            <div ng-repeat="vr in de.validationRules" class="alert alert-danger trimmed-alert small-vertical-spacing italic" ng-if="model.failedValidationRules.indexOf(vr.id) !== -1 && ocos.length ==1 ">
+                                                {{vr.instruction ? vr.instruction : vr.displayName}}
+                                            </div>
+                                        </td>
+                                        <td ng-if="section.greyedFields.indexOf(de.id+'.'+oco.id) === -1">
+                                            <ng-form name="innerForm">
+                                                <span ng-if="de.optionSetValue">
+                                                    <ui-select theme="select2"
+                                                           ng-model="dataValues[de.id][oco.id].value"
+                                                           ng-disabled="checkDisabled(section,de,oco)"
+                                                           d2-tab-index
+                                                           tabindex={{tabOrder[de.id][oco.id]}}
+                                                           name="foo"
+                                                           tabname="foo"
+                                                           on-select="saveDataValue(de.id, oco.id)"
+                                                           on-remove="saveDataValue(de.id, oco.id)"
+                                                           style="width:100%;">
+                                                        <ui-select-match allow-clear="true"
+                                                                     class="form-control-ui-select"
+                                                                     ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                     placeholder="{{'select_or_search' | translate}}">
+                                                            {{$select.selected.displayName  || $select.selected}}
+                                                        </ui-select-match>
+                                                        <ui-select-choices repeat="option.displayName as option in model.optionSets[de.optionSet.id].options | filter: $select.search | limitTo:maxOptionSize">
+                                                        <span ng-bind-html="option.displayName | highlight: $select.search"></span>
+                                                        </ui-select-choices>
+                                                    </ui-select>
+                                                </span>
+                                                <span ng-if="!de.optionSetValue">
+                                                    <span ng-switch="de.valueType">
+                                                        <span ng-switch-when="NUMBER">
+                                                            <span class="input-group">
+                                                                <input type="number"
+                                                                       name="foo"
+                                                                       d2-number-validator
+                                                                       number-type={{de.valueType}}
+                                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                                       ng-disabled="checkDisabled(section,de,oco)"
+                                                                       d2-tab-index
+                                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                                       tabname="foo"
+                                                                       class="form-control"
+                                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                                    <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                                        <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                                    </span>
+                                                            </span>
+                                                        </span>
+                                                        <span ng-switch-when="INTEGER">
+                                                            <span class="input-group">
+                                                                <input type="number"
+                                                                       name="foo"
+                                                                       d2-number-validator
+                                                                       number-type={{de.valueType}}
+                                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                                       ng-disabled="checkDisabled(section,de,oco)"
+                                                                       d2-tab-index
+                                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                                       tabname="foo"
+                                                                       class="form-control"
+                                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                        <span ng-switch-when="INTEGER_POSITIVE">
+                                                            <span class="input-group">
+                                                                <input type="number"
+                                                                       name="foo"
+                                                                       d2-number-validator
+                                                                       number-type={{de.valueType}}
+                                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                                       ng-disabled="checkDisabled(section,de,oco)"
+                                                                       d2-tab-index
+                                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                                       tabname="foo"
+                                                                       class="form-control"
+                                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                        <span ng-switch-when="INTEGER_NEGATIVE">
+                                                            <span class="input-group">
+                                                                <input type="number"
+                                                                       name="foo"
+                                                                       d2-number-validator
+                                                                       number-type={{de.valueType}}
+                                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                                       ng-disabled="checkDisabled(section,de,oco)"
+                                                                       d2-tab-index
+                                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                                       tabname="foo"
+                                                                       class="form-control"
+                                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                        <span ng-switch-when="INTEGER_ZERO_OR_POSITIVE">
+                                                            <span class="input-group">
+                                                                <input type="number"
+                                                                   name="foo"
+                                                                   d2-number-validator
+                                                                   number-type={{de.valueType}}
+                                                                   ng-model="dataValues[de.id][oco.id].value"
+                                                                   ng-disabled="checkDisabled(section,de,oco)"
+                                                                   d2-tab-index
+                                                                   tabindex={{tabOrder[de.id][oco.id]}}
+                                                                   tabname="foo"
+                                                                   class="form-control"
+                                                                   ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                   ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                                   d2-blur="saveDataValue(de.id, oco.id)">
+                                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                        <span ng-switch-when="TRUE_ONLY">
+                                                            <input type="checkbox"
+                                                                   name="foo"
+                                                                   ng-model="dataValues[de.id][oco.id].value"
+                                                                   ng-disabled="checkDisabled(section,de,oco)"
+                                                                   d2-tab-index
+                                                                   tabindex={{tabOrder[de.id][oco.id]}}
+                                                                   tabname="foo"
+                                                                   class="form-control"
+                                                                   ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                   d2-blur="saveDataValue(de.id, oco.id)">
+                                                        </span>
+                                                        <span ng-switch-when="PERCENTAGE">
+                                                            <span class="input-group">
+                                                                <input type="number"
+                                                                       name="foo"
+                                                                       d2-number-validator
+                                                                       number-type={{de.valueType}}
+                                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                                       ng-disabled="checkDisabled(section,de,oco)"
+                                                                       d2-tab-index
+                                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                                       tabname="foo"
+                                                                       class="form-control"
+                                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                        <span ng-switch-when="BOOLEAN">
+                                                            <ui-select theme="select2"
+                                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                                       ng-disabled="checkDisabled(section,de,oco)"
+                                                                       d2-tab-index
+                                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                                       name="foo"
+                                                                       on-select="saveDataValue(de.id, oco.id)"
+                                                                       on-remove="saveDataValue(de.id, oco.id)"
+                                                                       style="width:100%;">
+                                                                <ui-select-match allow-clear="true"
+                                                                                 class="form-control-ui-select"
+                                                                                 ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                                 placeholder="{{'select_or_search' | translate}}">
+                                                                    {{$select.selected.displayName  || $select.selected}}
+                                                                </ui-select-match>
+                                                                <ui-select-choices repeat="option.value as option in model.booleanValues | filter: $select.search">
+                                                                    <span ng-bind-html="option.displayName | highlight: $select.search"></span>
+                                                                </ui-select-choices>
+                                                            </ui-select>
+                                                        </span>
+                                                        <span ng-switch-when="LONG_TEXT">
+                                                            <textarea rows="5"
+                                                                      name="foo"
+                                                                      ng-model="dataValues[de.id][oco.id].value"
+                                                                      ng-disabled="checkDisabled(section,de,oco)"
+                                                                      d2-tab-index
+                                                                      tabindex={{tabOrder[de.id][oco.id]}}
+                                                                      tabname="foo"
+                                                                      class="form-control"
+                                                                      ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                      d2-blur="saveDataValue(de.id, oco.id)">
+                                                            </textarea>
+                                                        </span>
+                                                        <span ng-switch-when="TEXT">
+                                                            <input type="text"
+                                                                   name="foo"
+                                                                   ng-model="dataValues[de.id][oco.id].value"
+                                                                   ng-disabled="checkDisabled(section,de,oco)"
+                                                                   d2-tab-index
+                                                                   tabindex={{tabOrder[de.id][oco.id]}}
+                                                                   tabname="foo"
+                                                                   class="form-control"
+                                                                   ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                   d2-blur="saveDataValue(de.id, oco.id)">
+                                                        </span>
+                                                        <span ng-switch-default>
+                                                            <div class="alert alert-danger form-control">
+                                                                {{'unsupported_value_type'| translate}}:  {{de.valueType}}
+                                                            </div>
+                                                        </span>
+                                                    </span>
+                                            </span>
+                                                <span ng-messages="innerForm.foo.$error" ng-if="interacted(innerForm.foo)" class="required" ng-messages-include="../dhis-web-commons/angular-forms/error-messages.html">
+                                                </span>
+                                                <span ng-if="model.failedCompulsoryDataElementOperands[de.id][oco.id]" class="required">
+                                                    {{'required' | translate}}
+                                                </span>
+                                            </ng-form>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div ng-if="section.dataElements.length === 0 || !section.dataElements">
+                                <div class="alert alert-warning">
+                                    {{'section_has_no_dataelements'| translate}}
+                                </div>
+                            </div>
+                        </div>
+                    </tab>
+                </tabset>
+            </div>
+        </div>
+        <div class="col-sm-12" ng-if="model.selectedDataSet.sections.length === 0">
+            <table class="report-table"
+                   ng-if="model.selectedDataSet.dataElements.length > 0">
+                <thead>
+                    <tr>
+                        <th class="col-sm-3 pull-center de-table-hdr">
+                            {{'s_no'| translate}}
+                        </th>
+                        <th class="col-sm-6 pull-center de-table-hdr">
+                            {{'activity'| translate}}
+                        </th>
+                        <th class="col-sm-3 pull-center de-table-hdr">
+                            {{'number'| translate}}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody ng-repeat="de in model.selectedDataSet.dataElements"
+                       ng-init="ocos = model.categoryCombos[de.categoryCombo.id].categoryOptionCombos">
+                    <tr ng-if="de.displayTitle">
+                        <td class="ind-style">
+                            SerialNumberShouldBeDisplayed
+                        </td>
+                        <td class="ind-style" ng-bind="de.displayTitle">
+                        </td>
+                        <td class="ind-style" ></td>
+                    </tr>
+                    <tr ng-repeat="ind in model.selectedDataSet.indicators" ng-if="ind.params.indexOf(de.id) === 0 || ind.params[0].lastIndexOf(de.id, 0) === 0"><!-- last index added for indicators that are defined with option combos-->
+                        <td class="ind-style" ng-bind="ind.serial_number">
+                        </td>
+                        <td class="ind-style" ng-bind="ind.displayName">
+                        </td>
+                        <td class="ind-style">
+                            {{getIndicatorValue(ind)}}
+                        </td>
+                    </tr>
+                    <tr class="de-total-style" ng-if="ocos.length > 1">
+                        <td>
+                        </td>
+                        <td>
+                            <div ng-bind="de.displayFormName">
+                            </div>
+                            <div ng-repeat="vr in de.validationRules" class="alert alert-danger trimmed-alert small-vertical-spacing italic" ng-if="model.failedValidationRules.indexOf(vr.id) !== -1">
+                                {{vr.instruction ? vr.instruction : vr.displayName}}
+                            </div>
+                        </td>
+                        <td ng-bind="dataValues[de.id].total" >
+                        </td>
+                    </tr>
+                    <tr class="de-style" ng-repeat="oco in ocos">
+
+                        <td>
+                            <!-- serial number location-->
+                            {{(de.serial_number && ocos.length >= 1) ? (de.serial_number + ".") : ''}} {{ocos.length <=1? ' ' : $index+1 }}
+                        </td>
+                        <td>
+                            <div class="oco-left-padding" ng-if="ocos.length > 1" ng-bind="oco.displayName">
+                            </div>
+                            <div ng-if="ocos.length === 1" ng-bind="de.displayFormName">
+                            </div>
+                            <div ng-repeat="vr in de.validationRules" class="alert alert-danger trimmed-alert small-vertical-spacing italic" ng-if="model.failedValidationRules.indexOf(vr.id) !== -1 && ocos.length ==1 ">
+                                {{vr.instruction ? vr.instruction : vr.displayName}}
+                            </div>
+                        </td>
+                        <td>
+                            <ng-form name="innerForm">
+                                <span ng-if="de.optionSetValue">
+                                    <ui-select theme="select2"
+                                            ng-disabled="checkDisabled(null,de,oco)"
+                                            ng-model="dataValues[de.id][oco.id].value"
+                                            name="foo"
+                                            d2-tab-index
+                                            tabindex={{tabOrder[de.id][oco.id]}}
+                                            tabname="foo"
+                                            on-select="saveDataValue(de.id, oco.id)"
+                                            on-remove="saveDataValue(de.id, oco.id)"
+                                            style="width:100%;">
+                                        <ui-select-match allow-clear="true"
+                                                        class="form-control-ui-select"
+                                                        ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                        placeholder="{{'select_or_search' | translate}}">
+                                            {{$select.selected.displayName  || $select.selected}}
+                                        </ui-select-match>
+                                        <ui-select-choices repeat="option.displayName as option in model.optionSets[de.optionSet.id].options | filter: $select.search | limitTo:maxOptionSize">
+                                            <span ng-bind-html="option.displayName | highlight: $select.search"></span>
+                                        </ui-select-choices>
+                                    </ui-select>
+                                </span>
+                                <span ng-if="!de.optionSetValue">
+                                    <span ng-switch="de.valueType">
+                                        <span ng-switch-when="LONG_TEXT">
+                                            <textarea rows="5"
+                                                      name="foo"
+                                                      ng-disabled="checkDisabled(null,de,oco)"
+                                                      ng-model="dataValues[de.id][oco.id].value"
+                                                      d2-tab-index
+                                                      tabindex={{tabOrder[de.id][oco.id]}}
+                                                      tabname="foo"
+                                                      class="form-control"
+                                                      ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                      d2-blur="saveDataValue(de.id, oco.id)">
+                                            </textarea>
+                                        </span>
+                                        <span ng-switch-when="TEXT">
+                                            <input type="text"
+                                                   name="foo"
+                                                   ng-disabled="checkDisabled(null,de,oco)"
+                                                   ng-model="dataValues[de.id][oco.id].value"
+                                                   d2-tab-index
+                                                   tabindex={{tabOrder[de.id][oco.id]}}
+                                                   tabname="foo"
+                                                   class="form-control"
+                                                   ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                   d2-blur="saveDataValue(de.id, oco.id)">
+                                        </span>
+                                        <span ng-switch-when="NUMBER">
+                                            <span class="input-group">
+                                                <input type="number"
+                                                       name="foo"
+                                                       d2-number-validator
+                                                       number-type={{de.valueType}}
+                                                       ng-disabled="checkDisabled(null,de,oco)"
+                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                       d2-tab-index
+                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                       tabname="foo"
+                                                       class="form-control"
+                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                </span>
+                                            </span>
+                                        </span>
+                                        <span ng-switch-when="INTEGER">
+                                            <span class="input-group">
+                                                <input type="number"
+                                                       name="foo"
+                                                       d2-number-validator
+                                                       number-type={{de.valueType}}
+                                                       ng-disabled="checkDisabled(null,de,oco)"
+                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                       d2-tab-index
+                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                       tabname="foo"
+                                                       class="form-control"
+                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                </span>
+                                            </span>
+                                        </span>
+                                        <span ng-switch-when="INTEGER_POSITIVE">
+                                            <span class="input-group">
+                                                <input type="number"
+                                                       name="foo"
+                                                       d2-number-validator
+                                                       number-type={{de.valueType}}
+                                                       ng-disabled="checkDisabled(null,de,oco)"
+                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                       d2-tab-index
+                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                       tabname="foo"
+                                                       class="form-control"
+                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                </span>
+                                            </span>
+                                        </span>
+                                        <span ng-switch-when="INTEGER_NEGATIVE">
+                                            <span class="input-group">
+                                                <input type="number"
+                                                       name="foo"
+                                                       d2-number-validator
+                                                       number-type={{de.valueType}}
+                                                       ng-disabled="checkDisabled(null,de,oco)"
+                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                       d2-tab-index
+                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                       tabname="foo"
+                                                       class="form-control"
+                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                </span>
+                                            </span>
+                                        </span>
+                                        <span ng-switch-when="INTEGER_ZERO_OR_POSITIVE">
+                                            <span class="input-group">
+                                                <input type="number"
+                                                       name="foo"
+                                                       d2-number-validator
+                                                       number-type={{de.valueType}}
+                                                       ng-disabled="checkDisabled(null,de,oco)"
+                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                       d2-tab-index
+                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                       tabname="foo"
+                                                       class="form-control"
+                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                </span>
+                                            </span>
+                                        </span>
+                                        <span ng-switch-when="TRUE_ONLY">
+                                            <input type="checkbox"
+                                                   name="foo"
+                                                   ng-disabled="checkDisabled(null,de,oco)"
+                                                   ng-model="dataValues[de.id][oco.id].value"
+                                                   d2-tab-index
+                                                   tabindex={{tabOrder[de.id][oco.id]}}
+                                                   tabname="foo"
+                                                   class="form-control"
+                                                   ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                   d2-blur="saveDataValue(de.id, oco.id)">
+                                        </span>
+                                        <span ng-switch-when="PERCENTAGE">
+                                            <span class="input-group">
+                                                <input type="number"
+                                                       name="foo"
+                                                       d2-number-validator
+                                                       number-type={{de.valueType}}
+                                                       ng-disabled="checkDisabled(null,de,oco)"
+                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                       d2-tab-index
+                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                       tabname="foo"
+                                                       class="form-control"
+                                                       ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                       ng-dblclick="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)"
+                                                       d2-blur="saveDataValue(de.id, oco.id)">
+                                                <span class="input-group-btn" ng-click="getAuditInfo(de, oco, dataValues[de.id][oco.id].value, dataValues[de.id][oco.id].comment,dataValues[de.id][oco.id].followUp)">
+                                                    <i class="fa fa-2x fa-line-chart history-icon" aria-hidden="true"></i>
+                                                </span>
+                                            </span>
+                                        </span>
+                                        <span ng-switch-when="BOOLEAN">
+                                            <ui-select theme="select2"
+                                                       ng-disabled="checkDisabled(null,de,oco)"
+                                                       ng-model="dataValues[de.id][oco.id].value"
+                                                       name="foo"
+                                                       d2-tab-index
+                                                       tabindex={{tabOrder[de.id][oco.id]}}
+                                                       tabname="foo"
+                                                       on-select="saveDataValue(de.id, oco.id)"
+                                                       on-remove="saveDataValue(de.id, oco.id)"
+                                                       style="width:100%;">
+                                                <ui-select-match allow-clear="true"
+                                                                 class="form-control-ui-select"
+                                                                 ng-class="getInputNotifcationClass(de.id, oco.id)"
+                                                                 placeholder="{{'select_or_search' | translate}}">
+                                                    {{$select.selected.displayName  || $select.selected}}
+                                                </ui-select-match>
+                                                <ui-select-choices repeat="option.value as option in model.booleanValues | filter: $select.search">
+                                                    <span ng-bind-html="option.displayName | highlight: $select.search"></span>
+                                                </ui-select-choices>
+                                            </ui-select>
+                                        </span>
+                                        <span ng-switch-default>
+                                            <div class="alert alert-danger form-control">
+                                                {{'unsupported_value_type'| translate}}:  {{de.valueType}}
+                                            </div>
+                                        </span>
+                                    </span>
+                                </span>
+                                <span ng-messages="innerForm.foo.$error" ng-if="interacted(innerForm.foo)" class="required" ng-messages-include="../dhis-web-commons/angular-forms/error-messages.html">
+                                </span>
+                                <span ng-if="model.failedCompulsoryDataElementOperands[de.id][oco.id]" class="required">
+                                    {{'required' | translate}}
+                                </span>
+                            </ng-form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col-sm-12">
+            <button type="button"
+                    class="btn btn-success"
+                    ng-click="saveCompletness(selectedOrgUnit.id, false)"
+                    ng-hide="model.dataSetCompletness[model.selectedAttributeOptionCombo]"
+                    title="{{'mark_complete'| translate}}">
+                {{'mark_complete'| translate}}
+            </button>
+            <button type="button"
+                    class="btn btn-danger"
+                    ng-click="deleteCompletness(selectedOrgUnit.id, false)"
+                    ng-hide="!model.dataSetCompletness[model.selectedAttributeOptionCombo]"
+                    title="{{'mark_incomplete'| translate}}">
+                {{'mark_incomplete'| translate}}
+            </button>
+        </div>
+    </div>
+    <div class="col-sm-12" ng-if="!model.dataEntryFormLoaded">
+        <img id="ouwt_loader" src="../../../images/ajax-loader-bar.gif" alt="{{'in_progress'| translate}}"/>
+
+        <div class="small-horizontal-spacing">
+            {{'loading_dataentry_form'| translate}}
+        </div>
+    </div>
+</div>
